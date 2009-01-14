@@ -91,38 +91,74 @@ class Compiler(object):
 		syntax = Var, '+', Var
 		def handle(self, left, right):
 			return ast.Add(left, right)
+	class AssAddMacro(OperMacro):
+		syntax = Var, '+=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '+=', right)
 	class SubMacro(OperMacro):
 		syntax = Var, '-', Var
 		def handle(self, left, right):
 			return ast.Sub(left, right)
+	class AssSubMacro(OperMacro):
+		syntax = Var, '-=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '-=', right)
 	class MulMacro(OperMacro):
 		syntax = Var, '*', Var
 		def handle(self, left, right):
 			return ast.Mul(left, right)
+	class AssMulMacro(OperMacro):
+		syntax = Var, '*=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '*=', right)
 	class DivMacro(OperMacro):
 		syntax = Var, '/', Var
 		def handle(self, left, right):
 			return ast.Div(left, right)
+	class AssDivMacro(OperMacro):
+		syntax = Var, '/=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '/=', right)
 	class ModMacro(OperMacro):
 		syntax = Var, '%', Var
 		def handle(self, left, right):
 			return ast.Mod(left, right)
+	class AssModMacro(OperMacro):
+		syntax = Var, '%=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '%=', right)
 	class PowMacro(OperMacro):
 		syntax = Var, '**', Var
 		def handle(self, left, right):
 			return ast.Power(left, right)
+	class AssPowMacro(OperMacro):
+		syntax = Var, '**=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '**=', right)
 	class BAndMacro(OperMacro):
 		syntax = Var, '&', Var
 		def handle(self, left, right):
 			return ast.Bitand(left, right)
+	class AssBAndMacro(OperMacro):
+		syntax = Var, '&=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '&=', right)
 	class BOrMacro(OperMacro):
 		syntax = Var, '|', Var
 		def handle(self, left, right):
 			return ast.Bitor(left, right)
+	class AssBOrMacro(OperMacro):
+		syntax = Var, '|=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '|=', right)
 	class BXorMacro(OperMacro):
 		syntax = Var, '^', Var
 		def handle(self, left, right):
 			return ast.Bitxor(left, right)
+	class AssBXorMacro(OperMacro):
+		syntax = Var, '^=', Var
+		def handle(self, left, right):
+			return ast.AugAssign(left, '^=', right)
 	
 	# Boolean
 	class AndMacro(OperMacro):
@@ -184,6 +220,13 @@ class Compiler(object):
 					return alist
 				else:
 					return ast.Name(alist)
+		
+		if len(alist) and not isinstance(alist[0], list):
+			if alist[0] == '(':
+				rep = self.compile([alist[1:-1]], ctype)
+				if isinstance(rep, list) and len(rep) == 1:
+					return rep[0]
+				return rep
 		
 		i = 0
 		while i < len(alist):
