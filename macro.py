@@ -7,7 +7,10 @@ class Var(object):
 class Macro(object):
 	syntax = None
 	subCompile = True
+	precedence = 0
 	def __init__(self, compiler):
+		if not isinstance(self.syntax, list) and not isinstance(self.syntax, tuple):
+			self.syntax = (self.syntax, )
 		self.syntaxLen = len(self.syntax)
 		self.compiler = compiler
 	def match(self, alist):
@@ -19,17 +22,32 @@ class Macro(object):
 		args = []
 		for i in xrange(self.syntaxLen):
 			elem = self.syntax[i]
-			celem = alist[i]
+			oelem = alist[i]
 			if elem == Var or isinstance(elem, Var):
 				if self.subCompile:
-					args.append(self.compiler.compile(celem, isinstance(elem, Var) and elem.type or None))
+					celem = self.compiler.compile(oelem, isinstance(elem, Var) and elem.type or None)
 				else:
-					args.append(celem)
+					celem = oelem
+				if (
+					isinstance(elem, Var) and 
+					not isinstance(celem, elem.type) and 
+					not isinstance(oelem, elem.type)
+				):
+					return None
+				args.append(celem)
 			elif isinstance(elem, str):
-				if elem != celem:
+				if elem != oelem:
 					return None
 		
 		return self.handle(*args)
+	
+	def __cmp__(self, b):
+		if isinstance(self, OperMacro) and not isinstance(b, OperMacro):
+			return 1
+		elif not isinstance(self, OperMacro) and isinstance(b, OperMacro):
+			return -1
+		
+		return cmp(self.precedence, b.precedence)
 
 class OperMacro(Macro):
 	def match(self, alist):

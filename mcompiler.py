@@ -1,189 +1,18 @@
 import pprint, tokenizer
-from macro import *
-import compiler.ast as ast
+from compiler.ast import *
 from compiler.misc import set_filename
 from compiler.pycodegen import ModuleCodeGenerator
 
+from macro import Macro
+
 class Compiler(object):
-	class AssMacro(OperMacro):
-	  syntax = Var(str), '=', Var
-	  def handle(self, left, right):
-	    return ast.Assign(
-	    	[ast.AssName(left, 'OP_ASSIGN')], 
-	    	right
-	    )
-	
-	class CommaMacro(OperMacro):
-		syntax = Var, ',', Var
-		def handle(self, left, right):
-			print left, right
-			if not isinstance(left, list):
-				left = [left]
-			if not isinstance(right, list):
-				right = [right]
-			return left + right
-	
-	class DefMacro(Macro):
-		syntax = 'def', Var(str), Var, Var
-		def handle(self, name, args, body):
-			return ast.Function(
-					None,           # Decorators
-					name,           # Name
-					[],             # Argnames
-					[],             # Defaults
-					0,              # Flags
-					None,           # Doc
-					ast.Stmt(body)  # Code
-				)
-	
-	class DotMacro(OperMacro):
-		syntax = Var, '.', Var
-		def handle(self, left, right):
-			return ast.Getattr(left, right)
-	
-	class PrintMacro(Macro):
-		syntax = 'print', Var
-		def handle(self, stmt):
-			return ast.Printnl([stmt], None)
-	
-	# Flow control
-	class IfMacro(Macro):
-		syntax = 'if', Var, Var
-		def handle(self, cond, body):
-			return ast.If([(cond, ast.Stmt(body))], None)
-	class WhileMacro(Macro):
-		syntax = 'while', Var, Var
-		def handle(self, cond, body):
-			return ast.While(cond, ast.Stmt(body), None)
-	
-	# Comparisons
-	class EqMacro(OperMacro):
-		syntax = Var, '==', Var
-		def handle(self, left, right):
-			return ast.Compare(left, [('==', right)])
-	class LtMacro(OperMacro):
-		syntax = Var, '<', Var
-		def handle(self, left, right):
-			return ast.Compare(left, [('<', right)])
-	class GtMacro(OperMacro):
-		syntax = Var, '>', Var
-		def handle(self, left, right):
-			return ast.Compare(left, [('>', right)])
-	class LeMacro(OperMacro):
-		syntax = Var, '<=', Var
-		def handle(self, left, right):
-			return ast.Compare(left, [('<=', right)])
-	class GeMacro(OperMacro):
-		syntax = Var, '>=', Var
-		def handle(self, left, right):
-			return ast.Compare(left, [('>=', right)])
-	
-	# Arithmetic
-	class IncMacro(OperMacro):
-		syntax = Var, '++'
-		def handle(self, var):
-			return ast.AugAssign(var, '+=', ast.Const(1))
-	class DecMacro(OperMacro):
-		syntax = Var, '--'
-		def handle(self, var):
-			return ast.AugAssign(var, '-=', ast.Const(1))
-	class AddMacro(OperMacro):
-		syntax = Var, '+', Var
-		def handle(self, left, right):
-			return ast.Add(left, right)
-	class AssAddMacro(OperMacro):
-		syntax = Var, '+=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '+=', right)
-	class SubMacro(OperMacro):
-		syntax = Var, '-', Var
-		def handle(self, left, right):
-			return ast.Sub(left, right)
-	class AssSubMacro(OperMacro):
-		syntax = Var, '-=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '-=', right)
-	class MulMacro(OperMacro):
-		syntax = Var, '*', Var
-		def handle(self, left, right):
-			return ast.Mul(left, right)
-	class AssMulMacro(OperMacro):
-		syntax = Var, '*=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '*=', right)
-	class DivMacro(OperMacro):
-		syntax = Var, '/', Var
-		def handle(self, left, right):
-			return ast.Div(left, right)
-	class AssDivMacro(OperMacro):
-		syntax = Var, '/=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '/=', right)
-	class ModMacro(OperMacro):
-		syntax = Var, '%', Var
-		def handle(self, left, right):
-			return ast.Mod(left, right)
-	class AssModMacro(OperMacro):
-		syntax = Var, '%=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '%=', right)
-	class PowMacro(OperMacro):
-		syntax = Var, '**', Var
-		def handle(self, left, right):
-			return ast.Power(left, right)
-	class AssPowMacro(OperMacro):
-		syntax = Var, '**=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '**=', right)
-	class BAndMacro(OperMacro):
-		syntax = Var, '&', Var
-		def handle(self, left, right):
-			return ast.Bitand(left, right)
-	class AssBAndMacro(OperMacro):
-		syntax = Var, '&=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '&=', right)
-	class BOrMacro(OperMacro):
-		syntax = Var, '|', Var
-		def handle(self, left, right):
-			return ast.Bitor(left, right)
-	class AssBOrMacro(OperMacro):
-		syntax = Var, '|=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '|=', right)
-	class BXorMacro(OperMacro):
-		syntax = Var, '^', Var
-		def handle(self, left, right):
-			return ast.Bitxor(left, right)
-	class AssBXorMacro(OperMacro):
-		syntax = Var, '^=', Var
-		def handle(self, left, right):
-			return ast.AugAssign(left, '^=', right)
-	
-	# Boolean
-	class AndMacro(OperMacro):
-		syntax = Var, 'and', Var
-		def handle(self, left, right):
-			return ast.And([left, right])
-	class SAndMacro(OperMacro):
-		syntax = Var, '&&', Var
-		def handle(self, left, right):
-			return ast.And([left, right])
-	class OrMacro(OperMacro):
-		syntax = Var, 'or', Var
-		def handle(self, left, right):
-			return ast.Or([left, right])
-	class SOrMacro(OperMacro):
-		syntax = Var, '||', Var
-		def handle(self, left, right):
-			return ast.Or([left, right])
-	
 	def __init__(self, source):
 		self.macros = []
 		for mem in dir(self):
 			mem = getattr(self, mem)
 			if isinstance(mem, type) and issubclass(mem, Macro):
 				self.macros.append(mem(self))
+		self.macros.sort()
 		
 		tokens = tokenizer.tokenize(source)
 		pprint.pprint(tokens)
@@ -191,52 +20,65 @@ class Compiler(object):
 		code = self.compile(tokens)
 		pprint.pprint(code)
 		
-		code = ast.Module(
+		code = Module(
 				None,
-				ast.Stmt(code)
+				Stmt(code)
 			)
 		
 		print code
 		set_filename('<macropy>', code)
 		self.compiled = ModuleCodeGenerator(code).getCode()
 	
-	def compile(self, alist, ctype=None):
-		if isinstance(alist, ast.Node):
-			return alist
-		elif isinstance(alist, tokenizer.Number):
-			if ctype == int:
-				return int(eval(alist))
-			elif ctype == long:
-				return long(eval(alist))
-			elif ctype == float:
-				return float(eval(alist))
+	def compileElem(self, elem, ctype=None):
+		if isinstance(elem, Node):
+			return elem
+		elif isinstance(elem, tokenizer.Number):
+			if ctype in (int, long, float):
+				return ctype(eval(elem))
 			else:
-				return ast.Const(eval(alist))
-		elif isinstance(alist, str):
-			if alist[0] in '\'"':
-				return ast.Const(eval(alist))
+				return Const(eval(elem))
+		elif isinstance(elem, str):
+			if elem[0] in '\'"':
+				return Const(eval(elem))
+			elif ctype == str or isinstance(elem, tokenizer.Op):
+				return elem
 			else:
-				if ctype == str:
-					return alist
-				else:
-					return ast.Name(alist)
+				return Name(str(elem))
+		else:
+			return elem
+	
+	def compile(self, alist, ctype=None, keepList=False):
+		if isinstance(alist, list):
+			if ctype == list:
+				return alist
+		else:
+			return self.compileElem(alist, ctype)
 		
 		if len(alist) and not isinstance(alist[0], list):
 			if alist[0] == '(':
 				rep = self.compile([alist[1:-1]], ctype)
-				if isinstance(rep, list) and len(rep) == 1:
+				if not keepList and isinstance(rep, list) and len(rep) == 1:
 					return rep[0]
 				return rep
 		
-		i = 0
-		while i < len(alist):
-			elem = alist[i]
-			if isinstance(elem, list):
-				for macro in self.macros:
-					rep = macro.match(elem)
-					if rep != None:
-						alist[i] = rep
-						i -= 1
-						break
-			i += 1
+		change = True
+		while change:
+			change = False
+			i = 0
+			for i in xrange(len(alist)):
+				elem = alist[i]
+				if isinstance(elem, list):
+					for macro in self.macros:
+						rep = macro.match(elem)
+						if rep != None:
+							change = True
+							alist[i] = rep
+							i -= 1
+							break
+					else:
+						for j in xrange(len(elem)):
+							elem[j] = self.compileElem(elem[j])
+				else:
+					alist[i] = self.compileElem(elem)
+				i += 1
 		return alist

@@ -1,10 +1,10 @@
 import sys, imp, marshal, struct, time
 
-from mcompiler import Compiler
+from epy import EPy
 
 def main(fn):
 	source = file(fn).readlines()
-	compiler = Compiler(source)
+	compiler = EPy(source)
 	pyc = file(fn.rsplit('.', 1)[0] + '2.pyc', 'wb')
 	pyc.write(imp.get_magic())
 	pyc.write(struct.pack('<l', time.time()))

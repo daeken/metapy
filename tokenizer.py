@@ -10,8 +10,13 @@ matchingGroup = {
 		'`' : '`'
 	}
 
+class Op(str):
+	def __repr__(self):
+		return 'OP' + self
+
 class Number(str):
-	pass
+	def __repr__(self):
+		return '#' + str(self)
 
 def tokenize(source):
 	toke = Tokenizer(source)
@@ -91,23 +96,26 @@ class Tokenizer(object):
 					tsize = 1
 					self.groups -= 1
 				else:
-					match = (
-						nameRE.match(line) or 
-						opRE.match(line)
-					)
+					match = opRE.match(line)
 					if match:
 						name = match.groups()[0]
-						self.top.append(name)
+						self.top.append(Op(name))
 						tsize = len(name)
 					else:
-						match = numberRE.match(line)
+						match = nameRE.match(line)
 						if match:
 							name = match.groups()[0]
-							self.top.append(Number(name))
+							self.top.append(name)
 							tsize = len(name)
 						else:
-							print 'foo', line
-							break
+							match = numberRE.match(line)
+							if match:
+								name = match.groups()[0]
+								self.top.append(Number(name))
+								tsize = len(name)
+							else:
+								print 'foo', line
+								break
 				
 				if tsize:
 					line = line[tsize:].lstrip()
