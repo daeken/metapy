@@ -1,4 +1,4 @@
-import compiler.ast as ast
+from compiler.ast import *
 
 class Var(object):
 	def __init__(self, type=None):
@@ -13,16 +13,25 @@ class Macro(object):
 			self.syntax = (self.syntax, )
 		self.syntaxLen = len(self.syntax)
 		self.compiler = compiler
-	def match(self, alist):
-		if isinstance(alist, ast.Node):
+	def match(self, alist, syntax=None):
+		if syntax == None:
+			doCall = True
+			syntax, syntaxLen = self.syntax, self.syntaxLen
+		else:
+			doCall = False
+			syntaxLen = len(syntax)
+		
+		if isinstance(alist, Node):
 			return None
-		elif len(alist) != self.syntaxLen:
+		elif len(alist) != syntaxLen:
 			return None
 		
 		args = []
-		for i in xrange(self.syntaxLen):
-			elem = self.syntax[i]
+		for i in xrange(syntaxLen):
+			elem = syntax[i]
 			oelem = alist[i]
+			if isinstance(oelem, Name):
+				oelem = oelem.name
 			if elem == Var or isinstance(elem, Var):
 				if self.subCompile:
 					celem = self.compiler.compile(oelem, isinstance(elem, Var) and elem.type or None)
@@ -39,7 +48,10 @@ class Macro(object):
 				if elem != oelem:
 					return None
 		
-		return self.handle(*args)
+		if doCall:
+			return self.handle(*args)
+		else:
+			return args
 	
 	def __cmp__(self, b):
 		if isinstance(self, OperMacro) and not isinstance(b, OperMacro):
@@ -48,6 +60,24 @@ class Macro(object):
 			return -1
 		
 		return cmp(self.precedence, b.precedence)
+
+class MLMacro(Macro):
+	def match(self, alist):
+		mlist = []
+		for line in alist:
+			matched = False
+			for syntax in self.syntax:
+				args = Macro.match(self, line, syntax)
+				if args != None:
+					mlist.append((syntax, args))
+					matched = True
+					break
+			if not matched:
+				break
+		if len(mlist) == 0:
+			return None
+		
+		return self.handle(mlist)
 
 class OperMacro(Macro):
 	def match(self, alist):

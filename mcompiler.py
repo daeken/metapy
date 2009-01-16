@@ -3,16 +3,22 @@ from compiler.ast import *
 from compiler.misc import set_filename
 from compiler.pycodegen import ModuleCodeGenerator
 
-from macro import Macro
+from macro import Macro, MLMacro
 
 class Compiler(object):
 	def __init__(self, source):
+		self.numTemps = 0
 		self.macros = []
+		self.mlMacros = []
 		for mem in dir(self):
 			mem = getattr(self, mem)
 			if isinstance(mem, type) and issubclass(mem, Macro):
-				self.macros.append(mem(self))
+				if issubclass(mem, MLMacro):
+					self.mlMacros.append(mem(self))
+				else:
+					self.macros.append(mem(self))
 		self.macros.sort()
+		self.mlMacros.sort()
 		
 		tokens = tokenizer.tokenize(source)
 		pprint.pprint(tokens)
@@ -25,7 +31,6 @@ class Compiler(object):
 				Stmt(code)
 			)
 		
-		print code
 		set_filename('<macropy>', code)
 		self.compiled = ModuleCodeGenerator(code).getCode()
 	
@@ -64,7 +69,21 @@ class Compiler(object):
 		change = True
 		while change:
 			change = False
-			i = 0
+			for i in xrange(len(alist)):
+				for macro in self.mlMacros:
+					rep = macro.match(alist[i:])
+					if rep == None:
+						continue
+					count, rep = rep
+					if not isinstance(rep, list):
+						rep = [rep]
+					alist = alist[:i] + rep + alist[count+i:]
+					change = True
+					break
+				if change:
+					break
+			if change:
+				break
 			for i in xrange(len(alist)):
 				elem = alist[i]
 				if isinstance(elem, list):
@@ -82,3 +101,15 @@ class Compiler(object):
 					alist[i] = self.compileElem(elem)
 				i += 1
 		return alist
+	
+	def walkReplace(self, alist, orig, repl):
+		for i in xrange(len(alist)):
+			elem = alist[i]
+			if isinstance(elem, list):
+				self.walkReplace(elem, orig, repl)
+			elif elem == orig:
+				alist[i] = repl
+	
+	def makeTempVar(self):
+		self.numTemps += 1
+		return '__temp_%i' % self.numTemps

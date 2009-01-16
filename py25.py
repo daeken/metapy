@@ -5,12 +5,12 @@ from mcompiler import Compiler
 
 class Py25(Compiler):
 	class AssMacro(OperMacro):
-	  syntax = Var(str), '=', Var
-	  def handle(self, left, right):
-	    return Assign(
-	    	[AssName(left, 'OP_ASSIGN')], 
-	    	right
-	    )
+		syntax = Var(str), '=', Var
+		def handle(self, left, right):
+			return Assign(
+				[AssName(left, 'OP_ASSIGN')], 
+				right
+			)
 	
 	class CommaMacro(OperMacro):
 		syntax = Var, ',', Var
@@ -39,16 +39,20 @@ class Py25(Compiler):
 	
 	class DotMacro(OperMacro):
 		syntax = Var, '.', Var
+		precedence = 40
 		def handle(self, left, right):
 			return Getattr(left, right)
 	
 	class PrintMacro(Macro):
 		syntax = 'print', Var
-		def handle(self, stmt):
-			return Printnl([stmt], None)
+		def handle(self, stmts):
+			if not isinstance(stmts, list):
+				stmts = [stmts]
+			return Printnl(stmts, None)
 	
 	class CallMacro(OperMacro):
 		syntax = Var(Node), Var(list)
+		precedence = 50
 		def handle(self, target, args):
 			if args[0] != '(':
 				return None
@@ -69,10 +73,31 @@ class Py25(Compiler):
 				Stmt(body), 
 				None
 			)
-	class IfMacro(Macro):
-		syntax = 'if', Var, Var
-		def handle(self, cond, body):
-			return If([(cond, Stmt(body))], None)
+	class IfMacro(MLMacro):
+		syntax = (
+				('if', Var, Var),
+				('elif', Var, Var),
+				('else', Var)
+			)
+		def handle(self, alist):
+			if alist[0][0][0] != 'if':
+				return None
+			cond, body = alist[0][1]
+			conds = [(cond, Stmt(body))]
+			elseBody = None
+			used = 1
+			for syntax, args in alist[1:]:
+				if syntax[0] == 'elif':
+					cond, body = args
+					conds.append((cond, Stmt(body)))
+					used += 1
+				elif syntax[0] == 'else':
+					elseBody = Stmt(args[0])
+					used += 1
+					break
+				else:
+					break
+			return used, If(conds, elseBody)
 	class WhileMacro(Macro):
 		syntax = 'while', Var, Var
 		def handle(self, cond, body):
@@ -81,28 +106,34 @@ class Py25(Compiler):
 	# Comparisons
 	class EqMacro(OperMacro):
 		syntax = Var, '==', Var
+		precedence = 170
 		def handle(self, left, right):
 			return Compare(left, [('==', right)])
 	class LtMacro(OperMacro):
 		syntax = Var, '<', Var
+		precedence = 170
 		def handle(self, left, right):
 			return Compare(left, [('<', right)])
 	class GtMacro(OperMacro):
 		syntax = Var, '>', Var
+		precedence = 170
 		def handle(self, left, right):
 			return Compare(left, [('>', right)])
 	class LeMacro(OperMacro):
 		syntax = Var, '<=', Var
+		precedence = 170
 		def handle(self, left, right):
 			return Compare(left, [('<=', right)])
 	class GeMacro(OperMacro):
 		syntax = Var, '>=', Var
+		precedence = 170
 		def handle(self, left, right):
 			return Compare(left, [('>=', right)])
 	
 	# Arithmetic
 	class AddMacro(OperMacro):
 		syntax = Var, '+', Var
+		precedence = 120
 		def handle(self, left, right):
 			return Add(left, right)
 	class AssAddMacro(OperMacro):
@@ -111,6 +142,7 @@ class Py25(Compiler):
 			return AugAssign(left, '+=', right)
 	class SubMacro(OperMacro):
 		syntax = Var, '-', Var
+		precedence = 121
 		def handle(self, left, right):
 			return Sub(left, right)
 	class AssSubMacro(OperMacro):
@@ -119,6 +151,7 @@ class Py25(Compiler):
 			return AugAssign(left, '-=', right)
 	class MulMacro(OperMacro):
 		syntax = Var, '*', Var
+		precedence = 110
 		def handle(self, left, right):
 			return Mul(left, right)
 	class AssMulMacro(OperMacro):
@@ -127,6 +160,7 @@ class Py25(Compiler):
 			return AugAssign(left, '*=', right)
 	class DivMacro(OperMacro):
 		syntax = Var, '/', Var
+		precedence = 111
 		def handle(self, left, right):
 			return Div(left, right)
 	class AssDivMacro(OperMacro):
@@ -135,6 +169,7 @@ class Py25(Compiler):
 			return AugAssign(left, '/=', right)
 	class ModMacro(OperMacro):
 		syntax = Var, '%', Var
+		precedence = 112
 		def handle(self, left, right):
 			return Mod(left, right)
 	class AssModMacro(OperMacro):
@@ -143,6 +178,7 @@ class Py25(Compiler):
 			return AugAssign(left, '%=', right)
 	class PowMacro(OperMacro):
 		syntax = Var, '**', Var
+		precedence = 80
 		def handle(self, left, right):
 			return Power(left, right)
 	class AssPowMacro(OperMacro):
@@ -151,6 +187,7 @@ class Py25(Compiler):
 			return AugAssign(left, '**=', right)
 	class BAndMacro(OperMacro):
 		syntax = Var, '&', Var
+		precedence = 140
 		def handle(self, left, right):
 			return Bitand(left, right)
 	class AssBAndMacro(OperMacro):
@@ -159,6 +196,7 @@ class Py25(Compiler):
 			return AugAssign(left, '&=', right)
 	class BOrMacro(OperMacro):
 		syntax = Var, '|', Var
+		precedence = 160
 		def handle(self, left, right):
 			return Bitor(left, right)
 	class AssBOrMacro(OperMacro):
@@ -167,6 +205,7 @@ class Py25(Compiler):
 			return AugAssign(left, '|=', right)
 	class BXorMacro(OperMacro):
 		syntax = Var, '^', Var
+		precedence = 150
 		def handle(self, left, right):
 			return Bitxor(left, right)
 	class AssBXorMacro(OperMacro):
@@ -177,17 +216,11 @@ class Py25(Compiler):
 	# Boolean
 	class AndMacro(OperMacro):
 		syntax = Var, 'and', Var
-		def handle(self, left, right):
-			return And([left, right])
-	class SAndMacro(OperMacro):
-		syntax = Var, '&&', Var
+		precedence = 210
 		def handle(self, left, right):
 			return And([left, right])
 	class OrMacro(OperMacro):
 		syntax = Var, 'or', Var
-		def handle(self, left, right):
-			return Or([left, right])
-	class SOrMacro(OperMacro):
-		syntax = Var, '||', Var
+		precedence = 220
 		def handle(self, left, right):
 			return Or([left, right])
