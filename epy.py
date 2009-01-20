@@ -8,12 +8,14 @@ class EPy(Py25):
 	# Arithmetic
 	class IncMacro(OperMacro):
 		syntax = Var, '++'
+		precedence = 250
 		def handle(self, var):
-			return ast.AugAssign(var, '+=', ast.Const(1))
+			return AugAssign(var, '+=', Const(1))
 	class DecMacro(OperMacro):
 		syntax = Var, '--'
+		precedence = 250
 		def handle(self, var):
-			return ast.AugAssign(var, '-=', ast.Const(1))
+			return AugAssign(var, '-=', Const(1))
 	
 	# Flow control
 	class SwitchMacro(Macro):
@@ -75,4 +77,11 @@ class EPy(Py25):
 	class IsaMacro(OperMacro):
 		syntax = Var, 'isa', Var
 		def handle(self, var, type):
-			return ast.CallFunc(ast.Name('isinstance'), [var, type], None, None)
+			return CallFunc(Name('isinstance'), [var, type], None, None)
+	
+	class ToMacro(OperMacro):
+		syntax = Var, 'to', Var, Optional('inclusive'), Optional('step', Var)
+		def handle(self, start, end, incl, step):
+			if incl:
+				end = Add((end, Const(1)))
+			return CallFunc(Name('xrange'), [start, end, step != None and step or Const(1)], None, None)
